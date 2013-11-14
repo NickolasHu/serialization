@@ -16,11 +16,14 @@ import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import org.xerial.snappy.Snappy;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
 public class SerializeBenchmark {
+	
+	Kryo kryo = new Kryo();
 	
 	public byte[] serializeJavaUtil(Serializable o) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -43,11 +46,12 @@ public class SerializeBenchmark {
 	}
 	
 	public byte[] serializeKryo(Serializable o) {
-		Kryo kryo = new Kryo();
+		//kryo = new Kryo(); // create instance every time to test performance
+//		kryo.register(JSONObject.class, new FieldSerializer(kryo, JSONObject.class));
 		ByteArrayOutputStream byteArrStream = new ByteArrayOutputStream();
 		Output output = new Output(byteArrStream);
 		
-		kryo.writeObject(output);
+		kryo.writeObject(output, o);
 		
 		byte[] out = output.toBytes();
 		output.close();
@@ -55,7 +59,6 @@ public class SerializeBenchmark {
 	}
 	
 	public Object deserializeKryo(byte[] in) {
-		Kryo kryo = new Kryo();
 		ByteArrayInputStream byteArrStream = new ByteArrayInputStream(in);
 		Input input = new Input(byteArrStream);
 		
@@ -181,82 +184,82 @@ public class SerializeBenchmark {
 	}
 	
 	
-	public static final void main(String args[]) throws IOException{
+	public static final void main(String args[]) throws IOException, ClassNotFoundException{
 		String content = new Scanner(new File("D:/tmp/result.json")).useDelimiter("\\Z").next();
-		Serializable obj = (Serializable) JSON.parse(content);
+		JSONObject obj = (JSONObject) JSON.parse(content);
 		
 		SerializeBenchmark benchmark = new SerializeBenchmark();
-		int TIMES = 1;
+		int TIMES = 1000;
 		
-		// kryo serialization
+//		// kryo serialization
 		long start = System.nanoTime();
-		byte[] serializedArr = null;
-		for (int i=0; i< TIMES; ++i) {
-			serializedArr = benchmark.serializeKryo(obj);
-		}
+//		byte[] serializedArr = null;
+//		for (int i=0; i< TIMES; ++i) {
+//			serializedArr = benchmark.serializeKryo(obj);
+//		}
 		double dt = (double)(System.nanoTime() - start) / (TIMES * 1000 * 1000);
-		System.out.println("serialize Kryo: avg time-"+dt+"ms size-"+serializedArr.length);
-		
-		// java util serialization
-		start = System.nanoTime();
-		
-		for (int i=0; i< TIMES; ++i) {
-			serializedArr = benchmark.serializeJavaUtil(obj);
-		}
-		dt = (double)(System.nanoTime() - start) / (TIMES * 1000 * 1000);
-		System.out.println("serialize JavaUtil: avg time-"+dt+"ms size-"+serializedArr.length);
-		
-		// gzip compression
-		start = System.nanoTime();
-		byte[] compressedArr = null;
-		for (int i=0; i< TIMES; ++i) {
-			compressedArr = benchmark.compressGZip(serializedArr);
-		}
-		dt = (double)(System.nanoTime() - start) / TIMES;
-		double compressRatio = (double) serializedArr.length / compressedArr.length;
-		System.out.println("compress GZip: avg time-"+dt+" compress ratio-"+compressRatio);
-		
-		// snappy compression
-		start = System.nanoTime();
-		for (int i=0; i< TIMES; ++i) {
-			compressedArr = benchmark.compressSnappy(serializedArr);
-		}
-		dt = (double)(System.nanoTime() - start) / TIMES;
-		compressRatio = (double) serializedArr.length / compressedArr.length;
-		System.out.println("compress Snappy: avg time-"+dt+"ns compress ratio-"+compressRatio);
-		
-		// bzip2 compression
-		start = System.nanoTime();
-		for (int i=0; i< TIMES; ++i) {
-			compressedArr = benchmark.compressBZip2(serializedArr);
-		}
-		dt = (double)(System.nanoTime() - start) / TIMES;
-		compressRatio = (double) serializedArr.length / compressedArr.length;
-		System.out.println("compress BZip2: avg time-"+dt+"ns compress ratio-"+compressRatio);
+//		System.out.println("serialize Kryo: avg time-"+dt+"ms size-"+serializedArr.length);
+//		
+//		// java util serialization
+//		start = System.nanoTime();
+//		
+//		for (int i=0; i< TIMES; ++i) {
+//			serializedArr = benchmark.serializeJavaUtil(obj);
+//		}
+//		dt = (double)(System.nanoTime() - start) / (TIMES * 1000 * 1000);
+//		System.out.println("serialize JavaUtil: avg time-"+dt+"ms size-"+serializedArr.length);
+//		
+//		// gzip compression
+//		start = System.nanoTime();
+//		byte[] compressedArr = null;
+//		for (int i=0; i< TIMES; ++i) {
+//			compressedArr = benchmark.compressGZip(serializedArr);
+//		}
+//		dt = (double)(System.nanoTime() - start) / TIMES;
+//		double compressRatio = (double) serializedArr.length / compressedArr.length;
+//		System.out.println("compress GZip: avg time-"+dt+" compress ratio-"+compressRatio);
+//		
+//		// snappy compression
+//		start = System.nanoTime();
+//		for (int i=0; i< TIMES; ++i) {
+//			compressedArr = benchmark.compressSnappy(serializedArr);
+//		}
+//		dt = (double)(System.nanoTime() - start) / TIMES;
+//		compressRatio = (double) serializedArr.length / compressedArr.length;
+//		System.out.println("compress Snappy: avg time-"+dt+"ns compress ratio-"+compressRatio);
+//		
+//		// bzip2 compression
+//		start = System.nanoTime();
+//		for (int i=0; i< TIMES; ++i) {
+//			compressedArr = benchmark.compressBZip2(serializedArr);
+//		}
+//		dt = (double)(System.nanoTime() - start) / TIMES;
+//		compressRatio = (double) serializedArr.length / compressedArr.length;
+//		System.out.println("compress BZip2: avg time-"+dt+"ns compress ratio-"+compressRatio);
 		
 		
 		Object object = null;
 		byte[] byteArr = null;
 		start = System.nanoTime();
 		for (int i=0; i<TIMES; ++i) {
-			byteArr = benchmark.compressGZip(benchmark.serializeKryo(obj));
-			object = benchmark.deserializeKryo(benchmark.uncompressGzip(byteArr));
+			byteArr = benchmark.compressGZip(benchmark.serializeJavaUtil(obj));
+			object = benchmark.deserializeJavaUtil(benchmark.uncompressGzip(byteArr));
 		}
 		dt = (double)(System.nanoTime() - start) / TIMES;
 		System.out.println("serialize kryo compress gzip: avg time-"+dt+"ns size-"+byteArr.length);
 		
 		start = System.nanoTime();
 		for (int i=0; i<TIMES; ++i) {
-			byteArr = benchmark.compressSnappy(benchmark.serializeKryo(obj));
-			object = benchmark.deserializeKryo(benchmark.uncompressSnappy(byteArr));
+			byteArr = benchmark.compressSnappy(benchmark.serializeJavaUtil(obj));
+			object = benchmark.deserializeJavaUtil(benchmark.uncompressSnappy(byteArr));
 		}
 		dt = (double)(System.nanoTime() - start) / TIMES;
 		System.out.println("serialize kryo compress snappy: avg time-"+dt+"ns size-"+byteArr.length);
 	
 		start = System.nanoTime();
 		for (int i=0; i<TIMES; ++i) {
-			byteArr = benchmark.compressBZip2(benchmark.serializeKryo(obj));
-			object = benchmark.deserializeKryo(benchmark.uncompressBZip2(byteArr));
+			byteArr = benchmark.compressBZip2(benchmark.serializeJavaUtil(obj));
+			object = benchmark.deserializeJavaUtil(benchmark.uncompressBZip2(byteArr));
 		}
 		dt = (double)(System.nanoTime() - start) / TIMES;
 		System.out.println("serialize kryo compress bzip2: avg time-"+dt+"ns size-"+byteArr.length);
