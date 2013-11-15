@@ -1,0 +1,10 @@
+environment: jdk1.6.0_02 kryo-2.22 snappy-1.04 commons-compress-1.3
+
+init size-134148 times-1000
+compress and uncompress with gzip: avg time-9437589.885ns size-25279
+compress and uncompress with snappy: avg time-1542147.355ns size-40908
+compress and uncompress with bzip2: avg time-6.250142834E7ns size-19874
+
+
+serialize and deserialize with java.util : avg time-1.3635494206E7ns size-134148
+serialize and deserialize with kryo: avg time-3341058.528ns size-81700
