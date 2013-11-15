@@ -45,24 +45,22 @@ public class SerializeBenchmark {
 		return out;
 	}
 	
-	public byte[] serializeKryo(Serializable o) {
-		//kryo = new Kryo(); // create instance every time to test performance
+	public byte[] serializeKryo(Object o) {
 //		kryo.register(JSONObject.class, new FieldSerializer(kryo, JSONObject.class));
 		ByteArrayOutputStream byteArrStream = new ByteArrayOutputStream();
 		Output output = new Output(byteArrStream);
 		
 		kryo.writeObject(output, o);
 		
-		byte[] out = output.toBytes();
 		output.close();
-		return out;
+		return byteArrStream.toByteArray();
 	}
 	
 	public Object deserializeKryo(byte[] in) {
 		ByteArrayInputStream byteArrStream = new ByteArrayInputStream(in);
 		Input input = new Input(byteArrStream);
 		
-		Object o = kryo.readObject(input, Object.class);
+		Object o =  kryo.readObject(input, Object.class);
 		
 		input.close();
 		return o;
@@ -191,77 +189,64 @@ public class SerializeBenchmark {
 		SerializeBenchmark benchmark = new SerializeBenchmark();
 		int TIMES = 1000;
 		
-//		// kryo serialization
-		long start = System.nanoTime();
-//		byte[] serializedArr = null;
-//		for (int i=0; i< TIMES; ++i) {
-//			serializedArr = benchmark.serializeKryo(obj);
-//		}
-		double dt = (double)(System.nanoTime() - start) / (TIMES * 1000 * 1000);
-//		System.out.println("serialize Kryo: avg time-"+dt+"ms size-"+serializedArr.length);
-//		
-//		// java util serialization
-//		start = System.nanoTime();
-//		
-//		for (int i=0; i< TIMES; ++i) {
-//			serializedArr = benchmark.serializeJavaUtil(obj);
-//		}
-//		dt = (double)(System.nanoTime() - start) / (TIMES * 1000 * 1000);
-//		System.out.println("serialize JavaUtil: avg time-"+dt+"ms size-"+serializedArr.length);
-//		
-//		// gzip compression
-//		start = System.nanoTime();
-//		byte[] compressedArr = null;
-//		for (int i=0; i< TIMES; ++i) {
-//			compressedArr = benchmark.compressGZip(serializedArr);
-//		}
-//		dt = (double)(System.nanoTime() - start) / TIMES;
-//		double compressRatio = (double) serializedArr.length / compressedArr.length;
-//		System.out.println("compress GZip: avg time-"+dt+" compress ratio-"+compressRatio);
-//		
-//		// snappy compression
-//		start = System.nanoTime();
-//		for (int i=0; i< TIMES; ++i) {
-//			compressedArr = benchmark.compressSnappy(serializedArr);
-//		}
-//		dt = (double)(System.nanoTime() - start) / TIMES;
-//		compressRatio = (double) serializedArr.length / compressedArr.length;
-//		System.out.println("compress Snappy: avg time-"+dt+"ns compress ratio-"+compressRatio);
-//		
-//		// bzip2 compression
-//		start = System.nanoTime();
-//		for (int i=0; i< TIMES; ++i) {
-//			compressedArr = benchmark.compressBZip2(serializedArr);
-//		}
-//		dt = (double)(System.nanoTime() - start) / TIMES;
-//		compressRatio = (double) serializedArr.length / compressedArr.length;
-//		System.out.println("compress BZip2: avg time-"+dt+"ns compress ratio-"+compressRatio);
-		
-		
-		Object object = null;
+		testSerialize(benchmark, TIMES, obj);
+//		testCompress(benchmark, TIMES, obj);
+	}
+
+	private static void testSerialize(SerializeBenchmark benchmark, int TIMES,
+			JSONObject obj) throws IOException, ClassNotFoundException {
+
 		byte[] byteArr = null;
-		start = System.nanoTime();
+		long start = System.nanoTime();
+		@SuppressWarnings("unused")
+		Object dumpObj = null;
+		
 		for (int i=0; i<TIMES; ++i) {
-			byteArr = benchmark.compressGZip(benchmark.serializeJavaUtil(obj));
-			object = benchmark.deserializeJavaUtil(benchmark.uncompressGzip(byteArr));
+			byteArr = benchmark.serializeJavaUtil(obj);
+			dumpObj = benchmark.deserializeJavaUtil(byteArr);
 		}
-		dt = (double)(System.nanoTime() - start) / TIMES;
-		System.out.println("serialize kryo compress gzip: avg time-"+dt+"ns size-"+byteArr.length);
+		double dt = (double)(System.nanoTime() - start) / TIMES;
+		System.out.println("serialize and deserialize with java.util : avg time-"+dt+"ns size-"+byteArr.length);
 		
 		start = System.nanoTime();
 		for (int i=0; i<TIMES; ++i) {
-			byteArr = benchmark.compressSnappy(benchmark.serializeJavaUtil(obj));
-			object = benchmark.deserializeJavaUtil(benchmark.uncompressSnappy(byteArr));
+			byteArr = benchmark.serializeKryo(obj);
+			dumpObj = benchmark.deserializeKryo(byteArr);
+//			JSONObject dumpJSObj = (JSONObject)dumpObj;
 		}
 		dt = (double)(System.nanoTime() - start) / TIMES;
-		System.out.println("serialize kryo compress snappy: avg time-"+dt+"ns size-"+byteArr.length);
+		System.out.println("serialize and deserialize with kryo: avg time-"+dt+"ns size-"+byteArr.length);
+	}
+
+	private static void testCompress(SerializeBenchmark benchmark, int TIMES, Serializable obj) throws IOException, ClassNotFoundException {
+		byte[] byteArr = null;
+		long start = System.nanoTime();
+		byte[] initArr = benchmark.serializeJavaUtil(obj);
+		@SuppressWarnings("unused")
+		byte[] dumpArr = null;
+		System.out.println("init size "+initArr.length);
+		
+		for (int i=0; i<TIMES; ++i) {
+			byteArr = benchmark.compressGZip(initArr);
+			dumpArr = benchmark.uncompressGzip(byteArr);
+		}
+		double dt = (double)(System.nanoTime() - start) / TIMES;
+		System.out.println("serialize java.util compress gzip: avg time-"+dt+"ns size-"+byteArr.length);
+		
+		start = System.nanoTime();
+		for (int i=0; i<TIMES; ++i) {
+			byteArr = benchmark.compressSnappy(initArr);
+			dumpArr = benchmark.uncompressSnappy(byteArr);
+		}
+		dt = (double)(System.nanoTime() - start) / TIMES;
+		System.out.println("serialize java.util compress snappy: avg time-"+dt+"ns size-"+byteArr.length);
 	
 		start = System.nanoTime();
 		for (int i=0; i<TIMES; ++i) {
-			byteArr = benchmark.compressBZip2(benchmark.serializeJavaUtil(obj));
-			object = benchmark.deserializeJavaUtil(benchmark.uncompressBZip2(byteArr));
+			byteArr = benchmark.compressBZip2(initArr);
+			dumpArr = benchmark.uncompressBZip2(byteArr);
 		}
 		dt = (double)(System.nanoTime() - start) / TIMES;
-		System.out.println("serialize kryo compress bzip2: avg time-"+dt+"ns size-"+byteArr.length);
+		System.out.println("serialize java.util compress bzip2: avg time-"+dt+"ns size-"+byteArr.length);
 	}
 }
